@@ -99,7 +99,11 @@ public class TestFramework
 
     public static bool IsDebug()
     {
+#if DEBUG
+        return Debugger.IsAttached;
+#else
         return false;
+#endif
     }
 
     private static AppBuilder BuildAvaloniaApp()

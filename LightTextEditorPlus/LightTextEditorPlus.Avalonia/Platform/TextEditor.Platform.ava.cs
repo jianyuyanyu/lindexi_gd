@@ -113,6 +113,16 @@ partial class TextEditor : Control
         => false;
 #endif
 
+    #region 公开方法
+
+    /// <inheritdoc cref="SkiaTextEditor.WaitForRenderCompletedAsync"/>
+    public Task WaitForRenderCompletedAsync()
+    {
+        return SkiaTextEditor.WaitForRenderCompletedAsync();
+    }
+
+    #endregion
+
     #region 交互
 
     /// <inheritdoc />

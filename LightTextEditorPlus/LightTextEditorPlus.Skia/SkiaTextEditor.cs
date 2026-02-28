@@ -169,9 +169,20 @@ public partial class SkiaTextEditor : IRenderManager
     /// <param name="renderContext"></param>
     /// <returns></returns>
     /// 正常情况下，可以使用 <see cref="IRenderManager.Render"/> 配合 <see cref="GetCurrentTextRender"/> 方法获取渲染内容
+    /// 文本库提供两个渲染方式，第一个就是直接将 <see cref="IRenderManager.Render"/> 注入给到文本核心，直接用 <see cref="SkiaTextEditor"/> 承载渲染。第二个就是在 UI 框架里面，自己实现渲染调度，调用 <see cref="BuildTextEditorSkiaRender"/> 方法进行渲染
+    /// 第一个方法无需 UI 框架做额外的处理，第二个方法可以让 UI 框架决定什么时候应该渲染，比如 UI 框架的渲染次数小于布局次数，很多次布局都只是为了输入层做的强行布局而已，此时就能够通过减少渲染次数提升性能
+    /// 第二个方法还能支持范围渲染，提升长文本的性能
     public ITextEditorContentSkiaRenderer BuildTextEditorSkiaRender(in TextEditorSkiaRenderContext renderContext)
     {
-        return RenderManager.BuildTextEditorSkiaRender(in renderContext);
+        var textEditorSkiaRender = RenderManager.BuildTextEditorSkiaRender(in renderContext);
+
+        if (!renderContext.RenderInfoProvider.IsDirty)
+        {
+            // 此时就算是完成渲染了
+            _renderCompletionSource.TrySetResult();
+        }
+
+        return textEditorSkiaRender;
     }
 
     /// <summary>
