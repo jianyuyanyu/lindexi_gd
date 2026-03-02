@@ -141,6 +141,12 @@ internal sealed class SimpleWriteTextEditor : TextEditor
             {
                 var sourceSpan = fencedCodeBlock.Span;
 
+                //setter.SetRunProperty(property =>
+                //    property with
+                //    {
+                //        Background = CodeBackgroundColor,
+                //    }, sourceSpan);
+
                 var codeText = ToText(sourceSpan);
 
                 var codeSetter = setter with
@@ -162,6 +168,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
                 {
                     codeSetter.TrySetRunProperty(CodeLangInfoRunProperty, new SourceSpan(closingFencedCharCount, closingFencedCharCount + langInfo?.Length ?? 0));
                 }
+
+                // 准备给代码内容着色
             }
         }
 
@@ -188,6 +196,7 @@ internal sealed class SimpleWriteTextEditor : TextEditor
     public SkiaTextRunProperty NormalTextRunProperty { get; }
     public IReadOnlyList<SkiaTextRunProperty> TitleLevelRunPropertyList { get; }
     public SkiaTextRunProperty CodeLangInfoRunProperty { get; }
+    public SKColor CodeBackgroundColor { get; } = new SKColor(0xFF3B3C37);
 
     protected override TextEditorHandler CreateTextEditorHandler()
     {
@@ -199,6 +208,22 @@ readonly record struct TextRunPropertySetter(TextEditor TextEditor)
 {
     public DocumentOffset StartOffset { get; init; } = 0;
 
+    public void SetRunProperty(ConfigRunProperty config, SourceSpan span)
+    {
+        span = span with
+        {
+            Start = span.Start + StartOffset,
+            End = span.End + StartOffset
+        };
+        var selection = SourceSpanToSelection(span);
+
+        TextEditor.TextEditorCore.SetUndoRedoEnable(false, "框架内部设置文本样式，防止将内容动作记录");
+      
+        TextEditor.SetRunProperty(config, selection);
+
+        TextEditor.TextEditorCore.SetUndoRedoEnable(true, "完成框架内部设置文本样式，启用撤销恢复");
+    }
+
     public void TrySetRunProperty(SkiaTextRunProperty runProperty, SourceSpan span)
     {
         span = span with
@@ -208,16 +233,6 @@ readonly record struct TextRunPropertySetter(TextEditor TextEditor)
         };
         var selection = SourceSpanToSelection(span);
 
-        // 由于 GetRunPropertyRange 没有去重，导致不能用 OneOrDefault 直接处理
-        //var currentRunProperty = this.GetRunPropertyRange(selection)
-
-        //    // 为什么取 OneOrDefault 呢？ 这是因为如果能够拿到多个字符属性，则必定需要重新设置
-        //    .OneOrDefault();
-
-        //if (currentRunProperty != runProperty)
-        //{
-        //    SetRunProperty(runProperty,selection);
-        //}
         TextEditor.TextEditorCore.SetUndoRedoEnable(false, "框架内部设置文本样式，防止将内容动作记录");
         IEnumerable<SkiaTextRunProperty> runPropertyRange = TextEditor.GetRunPropertyRange(selection);
         var same = runPropertyRange.All(t => t == runProperty);
