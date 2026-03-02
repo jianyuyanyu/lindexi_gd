@@ -5,6 +5,7 @@ using LightTextEditorPlus;
 using LightTextEditorPlus.Core;
 using LightTextEditorPlus.Core.Carets;
 using LightTextEditorPlus.Core.Document.Segments;
+using LightTextEditorPlus.Core.Rendering;
 using LightTextEditorPlus.Document;
 using LightTextEditorPlus.Editing;
 using LightTextEditorPlus.Primitive;
@@ -26,6 +27,10 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Avalonia.Skia;
+using LightTextEditorPlus.Core.Document;
+using LightTextEditorPlus.Utils;
+using static Markdig.Syntax.CodeBlock;
 
 namespace SimpleWrite.Business.TextEditors;
 
@@ -109,6 +114,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
         var markdownDocument = Markdown.Parse(markdownText, pipeline);
         var setter = new TextRunPropertySetter(this);
 
+        CodeBlockList.Clear();
+
         foreach (Block block in markdownDocument)
         {
             if (block is ParagraphBlock paragraphBlock)
@@ -139,7 +146,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
 
             if (block is FencedCodeBlock fencedCodeBlock)
             {
-                var sourceSpan = fencedCodeBlock.Span;
+                SourceSpan sourceSpan = fencedCodeBlock.Span;
+                CodeBlockList.Add(sourceSpan);
 
                 //setter.SetRunProperty(property =>
                 //    property with
@@ -180,6 +188,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
         }
     }
 
+    private List<SourceSpan> CodeBlockList { get; } = [];
+
     /// <summary>
     /// 快捷键执行器
     /// </summary>
@@ -197,10 +207,70 @@ internal sealed class SimpleWriteTextEditor : TextEditor
     public IReadOnlyList<SkiaTextRunProperty> TitleLevelRunPropertyList { get; }
     public SkiaTextRunProperty CodeLangInfoRunProperty { get; }
     public SKColor CodeBackgroundColor { get; } = new SKColor(0xFF3B3C37);
+    public SolidColorBrush CodeBackgroundColorBrush { get; } = new SolidColorBrush(0xFF3B3C37);
 
     protected override TextEditorHandler CreateTextEditorHandler()
     {
         return new SimpleWriteTextEditorHandler(this);
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        var viewport = GetViewport();
+
+        var textEditor = this;
+        if (textEditor.TextEditorCore.TryGetRenderInfo(out var renderInfoProvider))
+        {
+            foreach (ParagraphRenderInfo paragraphRenderInfo in renderInfoProvider.GetParagraphRenderInfoList())
+            {
+                var paragraphBounds = paragraphRenderInfo.ParagraphLayoutData.TextContentBounds;
+
+                if (viewport != null)
+                {
+                    if (!viewport.Value.IntersectsWith(paragraphBounds))
+                    {
+                        // 不在可见范围内，忽略
+                        continue;
+                    }
+                }
+
+                RenderCodeBlock(in paragraphRenderInfo);
+            }
+        }
+
+        base.Render(context);
+
+        void RenderCodeBlock(in ParagraphRenderInfo paragraphRenderInfo)
+        {
+            // 判断段落是否在代码范围内
+            ITextParagraph textParagraph = paragraphRenderInfo.Paragraph;
+            var isInCodeBlock = IsInCodeBlock(textParagraph);
+            if (isInCodeBlock)
+            {
+                var outlineBounds = paragraphRenderInfo.ParagraphLayoutData.OutlineBounds;
+                context.DrawRectangle(CodeBackgroundColorBrush, null, outlineBounds.ToSKRect().ToAvaloniaRect());
+            }
+        }
+
+        bool IsInCodeBlock(ITextParagraph textParagraph)
+        {
+            int startOffset = textParagraph.GetParagraphStartOffset();
+            var length = textParagraph.CharCount;
+            var endOffset = startOffset + length;
+
+            foreach (var sourceSpan in CodeBlockList)
+            {
+                var start = sourceSpan.Start;
+                var end = sourceSpan.End + 1;
+
+                if (startOffset < end && endOffset > start)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }
 
@@ -218,7 +288,7 @@ readonly record struct TextRunPropertySetter(TextEditor TextEditor)
         var selection = SourceSpanToSelection(span);
 
         TextEditor.TextEditorCore.SetUndoRedoEnable(false, "框架内部设置文本样式，防止将内容动作记录");
-      
+
         TextEditor.SetRunProperty(config, selection);
 
         TextEditor.TextEditorCore.SetUndoRedoEnable(true, "完成框架内部设置文本样式，启用撤销恢复");
