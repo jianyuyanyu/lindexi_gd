@@ -141,11 +141,11 @@ internal sealed class SimpleWriteTextEditor : TextEditor
             {
                 var sourceSpan = fencedCodeBlock.Span;
 
-                setter.SetRunProperty(property =>
-                    property with
-                    {
-                        Background = CodeBackgroundColor,
-                    }, sourceSpan);
+                //setter.SetRunProperty(property =>
+                //    property with
+                //    {
+                //        Background = CodeBackgroundColor,
+                //    }, sourceSpan);
 
                 var codeText = ToText(sourceSpan);
 
@@ -168,6 +168,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
                 {
                     codeSetter.TrySetRunProperty(CodeLangInfoRunProperty, new SourceSpan(closingFencedCharCount, closingFencedCharCount + langInfo?.Length ?? 0));
                 }
+
+                // 准备给代码内容着色
             }
         }
 
