@@ -517,23 +517,25 @@ partial class TextEditor : Control
         _containerScrollViewer = scrollViewer;
     }
 
+    protected virtual ScrollViewer? ContainerScrollViewer => _containerScrollViewer;
+
     private ScrollViewer? _containerScrollViewer;
 
     /// <summary>
     /// 获取可见范围
     /// </summary>
     /// <returns></returns>
-    private TextRect? GetViewport()
+    protected virtual TextRect? GetViewport()
     {
-        if (_containerScrollViewer is null)
+        if (ContainerScrollViewer is null)
         {
             return null;
         }
 
-        double offsetX = _containerScrollViewer.Offset.X;
-        double offsetY = _containerScrollViewer.Offset.Y;
-        double viewportWidth = _containerScrollViewer.Viewport.Width;
-        double viewportHeight = _containerScrollViewer.Viewport.Height;
+        double offsetX = ContainerScrollViewer.Offset.X;
+        double offsetY = ContainerScrollViewer.Offset.Y;
+        double viewportWidth = ContainerScrollViewer.Viewport.Width;
+        double viewportHeight = ContainerScrollViewer.Viewport.Height;
         return new TextRect(offsetX, offsetY, viewportWidth, viewportHeight);
     }
 
