@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using LightTextEditorPlus.Core.Carets;
 using LightTextEditorPlus.Document;
 using LightTextEditorPlus.Primitive;
@@ -33,6 +34,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
         CaretConfiguration.SelectionBrush = new Color(0x9F, 0x26, 0x3F, 0xC7);
 
         TextEditorCore.DocumentChanged += TextEditorCore_DocumentChanged;
+
+        SizeToContent = SizeToContent.Height;
 
         var normalFontSize = 25;
 
@@ -165,15 +168,4 @@ internal sealed class SimpleWriteTextEditor : TextEditor
     {
         return new SimpleWriteTextEditorHandler(this);
     }
-
-    //class F : IMarkdownRenderer
-    //{
-    //    public object Render(MarkdownObject markdownObject)
-    //    {
-    //    }
-
-    //    public ObjectRendererCollection ObjectRenderers { get; set; }
-    //    public event Action<IMarkdownRenderer, MarkdownObject>? ObjectWriteBefore;
-    //    public event Action<IMarkdownRenderer, MarkdownObject>? ObjectWriteAfter;
-    //}
 }

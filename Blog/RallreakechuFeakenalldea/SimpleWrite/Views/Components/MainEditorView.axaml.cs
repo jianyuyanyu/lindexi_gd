@@ -69,7 +69,6 @@ public partial class MainEditorView : UserControl
             }
         }
 
-        TextEditorBorder.Child = editorModel.TextEditor;
         CurrentTextEditor = editorModel.TextEditor;
     }
 
@@ -135,6 +134,15 @@ public partial class MainEditorView : UserControl
         ShortcutManager = ViewModel.ShortcutManager
     };
     private ShortcutExecutor? _shortcutExecutor;
+    private TextEditor _currentTextEditor = null!;
 
-    public TextEditor CurrentTextEditor { get; private set; } = null!;
+    public TextEditor CurrentTextEditor
+    {
+        get => _currentTextEditor;
+        private set
+        {
+            _currentTextEditor = value;
+            TextEditorScrollViewer.Content = value;
+        }
+    }
 }

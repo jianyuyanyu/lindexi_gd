@@ -9,5 +9,8 @@
         <viewModels:EditorViewModel/>
     </Design.DataContext>
     <Border x:Name="TextEditorBorder">
+        <ScrollViewer x:Name="TextEditorScrollViewer" HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Visible"
+            ></ScrollViewer>
     </Border>
 </UserControl>
