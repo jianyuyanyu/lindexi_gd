@@ -9,6 +9,7 @@ using SimpleWrite.Business.ShortcutManagers;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -90,7 +91,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
             .UseAdvancedExtensions()
             .Build();
 
-        var markdownDocument = Markdown.Parse(this.Text, pipeline);
+        var markdownText = Text;
+        var markdownDocument = Markdown.Parse(markdownText, pipeline);
         foreach (Block block in markdownDocument)
         {
             if (block is ParagraphBlock paragraphBlock)
@@ -119,6 +121,26 @@ internal sealed class SimpleWriteTextEditor : TextEditor
                 TrySetRunProperty(runProperty, headingBlock.Span);
             }
 
+            if (block is FencedCodeBlock fencedCodeBlock)
+            {
+                var codeText = ToText(fencedCodeBlock.Span);
+
+                //var stringReader = new StringReader(codeText);
+                //stringReader.ReadLine()
+                //var codeLineArray = codeText.Split('\n');
+
+                var fencedChar = fencedCodeBlock.FencedChar;
+                var closingFencedCharCount = fencedCodeBlock.ClosingFencedCharCount;
+                var langInfo = fencedCodeBlock.Info;
+
+
+            }
+        }
+
+        string ToText(SourceSpan span)
+        {
+            var text = markdownText.AsSpan().Slice(span.Start, span.Length).ToString();
+            return text;
         }
 
         void TrySetRunProperty(SkiaTextRunProperty runProperty, SourceSpan span)
