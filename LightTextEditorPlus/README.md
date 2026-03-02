@@ -131,5 +131,4 @@ https://github.com/toptensoftware/RichTextKit : Rich text rendering for SkiaShar
 - [实现定义](./Docs/实现定义.md)
 - [术语表](./Docs/术语表.md)
 - [参考文档](./Docs/参考文档.md)
-- [AI 智能体协作指南](./Docs/AI智能体协作指南.md)
-- [知识库目录说明](./知识库/README.md)
+- [知识库目录说明](./Docs/Knowledge/README.md)
