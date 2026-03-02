@@ -38,7 +38,6 @@ internal sealed class SimpleWriteTextEditor : TextEditor
     {
         CaretConfiguration.SelectionBrush = new Color(0x9F, 0x26, 0x3F, 0xC7);
 
-        TextEditorCore.DocumentChanged += TextEditorCore_DocumentChanged;
         TextEditorCore.TextChanged += TextEditorCore_TextChanged;
 
         SizeToContent = SizeToContent.Height;
@@ -101,10 +100,6 @@ internal sealed class SimpleWriteTextEditor : TextEditor
     }
 
     private void TextEditorCore_TextChanged(object? sender, EventArgs e)
-    {
-    }
-
-    private void TextEditorCore_DocumentChanged(object? sender, EventArgs e)
     {
         var pipeline = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions()
