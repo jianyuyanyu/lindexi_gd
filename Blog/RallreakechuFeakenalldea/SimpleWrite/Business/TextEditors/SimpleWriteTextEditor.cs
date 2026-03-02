@@ -1,11 +1,24 @@
-﻿using Avalonia.Media;
+﻿using Avalonia.Controls;
+using Avalonia.Media;
 
 using LightTextEditorPlus;
+using LightTextEditorPlus.Core;
+using LightTextEditorPlus.Core.Carets;
+using LightTextEditorPlus.Core.Document.Segments;
+using LightTextEditorPlus.Document;
 using LightTextEditorPlus.Editing;
+using LightTextEditorPlus.Primitive;
 
 using Markdig;
+using Markdig.Helpers;
+using Markdig.Renderers;
+using Markdig.Syntax;
 
 using SimpleWrite.Business.ShortcutManagers;
+using SimpleWrite.Business.Snippets;
+using SimpleWrite.Utils;
+
+using SkiaSharp;
 
 using System;
 using System.Collections.Generic;
@@ -13,15 +26,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Avalonia.Controls;
-using LightTextEditorPlus.Core.Carets;
-using LightTextEditorPlus.Document;
-using LightTextEditorPlus.Primitive;
-using Markdig.Renderers;
-using Markdig.Syntax;
-using SimpleWrite.Business.Snippets;
-using SimpleWrite.Utils;
-using SkiaSharp;
 
 namespace SimpleWrite.Business.TextEditors;
 
@@ -35,10 +39,11 @@ internal sealed class SimpleWriteTextEditor : TextEditor
         CaretConfiguration.SelectionBrush = new Color(0x9F, 0x26, 0x3F, 0xC7);
 
         TextEditorCore.DocumentChanged += TextEditorCore_DocumentChanged;
+        TextEditorCore.TextChanged += TextEditorCore_TextChanged;
 
         SizeToContent = SizeToContent.Height;
 
-        var normalFontSize = 25;
+        var normalFontSize = 20;
 
         SetStyleTextRunProperty(runProperty => runProperty with
         {
@@ -83,6 +88,20 @@ internal sealed class SimpleWriteTextEditor : TextEditor
         });
 
         TitleLevelRunPropertyList = [titleLevel1RunProperty, titleLevel2RunProperty, titleLevel3RunProperty, titleLevel4RunProperty, titleLevel5RunProperty];
+
+        CodeLangInfoRunProperty = CreateColorRunProperty(new SKColor(0xFFAC90DE));
+
+        SkiaTextRunProperty CreateColorRunProperty(SKColor color)
+        {
+            return CreateRunProperty(property => property with
+            {
+                Foreground = new SolidColorSkiaTextBrush(color)
+            });
+        }
+    }
+
+    private void TextEditorCore_TextChanged(object? sender, EventArgs e)
+    {
     }
 
     private void TextEditorCore_DocumentChanged(object? sender, EventArgs e)
@@ -93,6 +112,8 @@ internal sealed class SimpleWriteTextEditor : TextEditor
 
         var markdownText = Text;
         var markdownDocument = Markdown.Parse(markdownText, pipeline);
+        var setter = new TextRunPropertySetter(this);
+
         foreach (Block block in markdownDocument)
         {
             if (block is ParagraphBlock paragraphBlock)
@@ -102,7 +123,7 @@ internal sealed class SimpleWriteTextEditor : TextEditor
 
                 }
 
-                TrySetRunProperty(NormalTextRunProperty, paragraphBlock.Span);
+                setter.TrySetRunProperty(NormalTextRunProperty, paragraphBlock.Span);
             }
 
             if (block is HeadingBlock headingBlock)
@@ -118,12 +139,19 @@ internal sealed class SimpleWriteTextEditor : TextEditor
                     runProperty = TitleLevelRunPropertyList[^1];
                 }
 
-                TrySetRunProperty(runProperty, headingBlock.Span);
+                setter.TrySetRunProperty(runProperty, headingBlock.Span);
             }
 
             if (block is FencedCodeBlock fencedCodeBlock)
             {
-                var codeText = ToText(fencedCodeBlock.Span);
+                var sourceSpan = fencedCodeBlock.Span;
+
+                var codeText = ToText(sourceSpan);
+
+                var codeSetter = setter with
+                {
+                    StartOffset = sourceSpan.Start
+                };
 
                 //var stringReader = new StringReader(codeText);
                 //stringReader.ReadLine()
@@ -133,7 +161,12 @@ internal sealed class SimpleWriteTextEditor : TextEditor
                 var closingFencedCharCount = fencedCodeBlock.ClosingFencedCharCount;
                 var langInfo = fencedCodeBlock.Info;
 
-
+                var lineReader = new Markdig.Helpers.LineReader(codeText);
+                StringSlice firstLine = lineReader.ReadLine();
+                if (firstLine.Length == closingFencedCharCount + (langInfo?.Length ?? 0))
+                {
+                    codeSetter.TrySetRunProperty(CodeLangInfoRunProperty, new SourceSpan(closingFencedCharCount, closingFencedCharCount + langInfo?.Length ?? 0));
+                }
             }
         }
 
@@ -142,33 +175,7 @@ internal sealed class SimpleWriteTextEditor : TextEditor
             var text = markdownText.AsSpan().Slice(span.Start, span.Length).ToString();
             return text;
         }
-
-        void TrySetRunProperty(SkiaTextRunProperty runProperty, SourceSpan span)
-        {
-            var selection = SourceSpanToSelection(span);
-
-            // 由于 GetRunPropertyRange 没有去重，导致不能用 OneOrDefault 直接处理
-            //var currentRunProperty = this.GetRunPropertyRange(selection)
-
-            //    // 为什么取 OneOrDefault 呢？ 这是因为如果能够拿到多个字符属性，则必定需要重新设置
-            //    .OneOrDefault();
-
-            //if (currentRunProperty != runProperty)
-            //{
-            //    SetRunProperty(runProperty,selection);
-            //}
-            TextEditorCore.SetUndoRedoEnable(false, "框架内部设置文本样式，防止将内容动作记录");
-            IEnumerable<SkiaTextRunProperty> runPropertyRange = GetRunPropertyRange(selection);
-            var same = runPropertyRange.All(t => t == runProperty);
-            if (!same)
-            {
-                SetRunProperty(runProperty, selection);
-            }
-            TextEditorCore.SetUndoRedoEnable(true, "完成框架内部设置文本样式，启用撤销恢复");
-        }
     }
-
-    private Selection SourceSpanToSelection(SourceSpan span) => new Selection(new CaretOffset(span.Start), span.Length);
 
     /// <summary>
     /// 快捷键执行器
@@ -185,9 +192,46 @@ internal sealed class SimpleWriteTextEditor : TextEditor
     /// </summary>
     public SkiaTextRunProperty NormalTextRunProperty { get; }
     public IReadOnlyList<SkiaTextRunProperty> TitleLevelRunPropertyList { get; }
+    public SkiaTextRunProperty CodeLangInfoRunProperty { get; }
 
     protected override TextEditorHandler CreateTextEditorHandler()
     {
         return new SimpleWriteTextEditorHandler(this);
     }
+}
+
+readonly record struct TextRunPropertySetter(TextEditor TextEditor)
+{
+    public DocumentOffset StartOffset { get; init; } = 0;
+
+    public void TrySetRunProperty(SkiaTextRunProperty runProperty, SourceSpan span)
+    {
+        span = span with
+        {
+            Start = span.Start + StartOffset,
+            End = span.End + StartOffset
+        };
+        var selection = SourceSpanToSelection(span);
+
+        // 由于 GetRunPropertyRange 没有去重，导致不能用 OneOrDefault 直接处理
+        //var currentRunProperty = this.GetRunPropertyRange(selection)
+
+        //    // 为什么取 OneOrDefault 呢？ 这是因为如果能够拿到多个字符属性，则必定需要重新设置
+        //    .OneOrDefault();
+
+        //if (currentRunProperty != runProperty)
+        //{
+        //    SetRunProperty(runProperty,selection);
+        //}
+        TextEditor.TextEditorCore.SetUndoRedoEnable(false, "框架内部设置文本样式，防止将内容动作记录");
+        IEnumerable<SkiaTextRunProperty> runPropertyRange = TextEditor.GetRunPropertyRange(selection);
+        var same = runPropertyRange.All(t => t == runProperty);
+        if (!same)
+        {
+            TextEditor.SetRunProperty(runProperty, selection);
+        }
+        TextEditor.TextEditorCore.SetUndoRedoEnable(true, "完成框架内部设置文本样式，启用撤销恢复");
+    }
+
+    private Selection SourceSpanToSelection(SourceSpan span) => new Selection(new CaretOffset(span.Start), span.Length);
 }
