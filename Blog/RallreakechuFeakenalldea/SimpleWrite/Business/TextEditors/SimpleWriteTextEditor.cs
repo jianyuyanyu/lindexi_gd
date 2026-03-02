@@ -168,15 +168,4 @@ internal sealed class SimpleWriteTextEditor : TextEditor
     {
         return new SimpleWriteTextEditorHandler(this);
     }
-
-    //class F : IMarkdownRenderer
-    //{
-    //    public object Render(MarkdownObject markdownObject)
-    //    {
-    //    }
-
-    //    public ObjectRendererCollection ObjectRenderers { get; set; }
-    //    public event Action<IMarkdownRenderer, MarkdownObject>? ObjectWriteBefore;
-    //    public event Action<IMarkdownRenderer, MarkdownObject>? ObjectWriteAfter;
-    //}
 }
