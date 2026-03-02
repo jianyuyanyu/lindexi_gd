@@ -10,6 +10,7 @@ using LightTextEditorPlus.Core.Document.Segments;
 using LightTextEditorPlus.Core.Exceptions;
 using LightTextEditorPlus.Core.Layout;
 using LightTextEditorPlus.Core.Primitive;
+using LightTextEditorPlus.Core.Primitive.Collections;
 
 namespace LightTextEditorPlus.Core.Rendering;
 
@@ -259,16 +260,9 @@ public class RenderInfoProvider
     /// 获取段落的渲染信息
     /// </summary>
     /// <returns></returns>
-    public IEnumerable<ParagraphRenderInfo> GetParagraphRenderInfoList()
+    public ParagraphRenderInfoReadonlyList GetParagraphRenderInfoList()
     {
-        var paragraphManager = TextEditor.DocumentManager.ParagraphManager;
-        var list = paragraphManager.GetParagraphList();
-        for (var index = 0; index < list.Count; index++)
-        {
-            VerifyNotDirty();
-            var paragraphData = list[index];
-            yield return new ParagraphRenderInfo(new ParagraphIndex(index), paragraphData, this);
-        }
+        return new ParagraphRenderInfoReadonlyList(this);
     }
 
     /// <summary>
