@@ -6,7 +6,7 @@ var appId = "5866932789";
 
 // speaker 发音人：voiceType
 // use_tag_parser 仅限声音复刻 2.0 复刻的音色，音色 ID 前缀需要为 saturn_
-var voiceType = "saturn_your_voice_id";
+var voiceType = "saturn_zh_female_vv_uranus_bigtts";
 
 // 将 use_tag_parser 开启。开启cot解析能力。cot能力可以辅助当前语音合成，对语速、情感等进行调整
 // 传递内容为：
