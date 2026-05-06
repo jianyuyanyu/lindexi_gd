@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Docs/Docs.csproj" />
+  <Project Path="VolcEngineSdk/VolcEngineSdk.csproj" />
+</Solution>
