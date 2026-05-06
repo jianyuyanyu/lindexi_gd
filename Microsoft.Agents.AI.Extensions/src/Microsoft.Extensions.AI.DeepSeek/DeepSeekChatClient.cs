@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Extensions.AI.DeepSeek;
+namespace Microsoft.Extensions.AI.DeepSeek;
 
 using Microsoft.Extensions.AI;
 
@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-public sealed class DeepSeekChatClient : IChatClient
+public sealed partial class DeepSeekChatClient : IChatClient
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
     {
@@ -25,13 +25,15 @@ public sealed class DeepSeekChatClient : IChatClient
     private readonly int _reasoningBudgetTokens;
     private readonly ChatClientMetadata _metadata;
 
-    public DeepSeekChatClient(
+    public DeepSeekChatClient
+    (
         string apiKey,
         string modelId,
         string baseUrl = "https://api.deepseek.com/v1",
         bool enableThinkingMode = true,
         int reasoningBudgetTokens = 8000,
-        HttpClient? httpClient = null)
+        HttpClient? httpClient = null
+    )
     {
         if (string.IsNullOrWhiteSpace(apiKey))
         {
@@ -403,7 +405,11 @@ public sealed class DeepSeekChatClient : IChatClient
                             ["function"] = new JsonObject
                             {
                                 ["name"] = functionCall.Name,
+#if NET8_0_OR_GREATER
+                                ["arguments"] = JsonSerializer.Serialize(functionCall.Arguments, SourceGenerationContext.Default.Options),
+#else
                                 ["arguments"] = JsonSerializer.Serialize(functionCall.Arguments, SerializerOptions),
+#endif
                             },
                         });
                         break;
@@ -470,7 +476,11 @@ public sealed class DeepSeekChatClient : IChatClient
             JsonElement element => JsonNode.Parse(element.GetRawText()),
             JsonDocument document => JsonNode.Parse(document.RootElement.GetRawText()),
             string text when !string.IsNullOrWhiteSpace(text) => JsonNode.Parse(text),
+#if NET8_0_OR_GREATER
+            _ => JsonSerializer.SerializeToNode(value, SourceGenerationContext.Default.Options),
+#else
             _ => JsonSerializer.SerializeToNode(value, SerializerOptions),
+#endif
         };
     }
 
@@ -482,7 +492,11 @@ public sealed class DeepSeekChatClient : IChatClient
             string text => text,
             JsonElement element => element.GetRawText(),
             JsonDocument document => document.RootElement.GetRawText(),
+#if NET8_0_OR_GREATER
+            _ => JsonSerializer.Serialize(result, SourceGenerationContext.Default.Options),
+#else
             _ => JsonSerializer.Serialize(result, SerializerOptions),
+#endif
         };
     }
 
@@ -492,7 +506,11 @@ public sealed class DeepSeekChatClient : IChatClient
     {
         while (true)
         {
+#if NET8_0_OR_GREATER
+            var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+#else
             var line = await reader.ReadLineAsync().ConfigureAwait(false);
+#endif
             if (line is null)
             {
                 yield break;
@@ -517,7 +535,11 @@ public sealed class DeepSeekChatClient : IChatClient
             DeepSeekChatChunk? chunk;
             try
             {
+#if NET8_0_OR_GREATER
+                chunk = JsonSerializer.Deserialize(payload, SourceGenerationContext.Default.DeepSeekChatChunk);
+#else
                 chunk = JsonSerializer.Deserialize<DeepSeekChatChunk>(payload, SerializerOptions);
+#endif
             }
             catch (JsonException)
             {
@@ -573,7 +595,11 @@ public sealed class DeepSeekChatClient : IChatClient
 
         try
         {
+#if NET8_0_OR_GREATER
+            var error = JsonSerializer.Deserialize(responseBody, SourceGenerationContext.Default.DeepSeekErrorResponse);
+#else
             var error = JsonSerializer.Deserialize<DeepSeekErrorResponse>(responseBody, SerializerOptions);
+#endif
             errorCode = error?.Error?.Code;
             errorMessage = error?.Error?.Message;
         }
@@ -583,12 +609,12 @@ public sealed class DeepSeekChatClient : IChatClient
 
         var detail = errorCode switch
         {
-            "insufficient_balance" => "账户余额不足，请充值后重试。",
-            "rate_limit_exceeded" => "请求速率超限，请稍后重试。",
+            "insufficient_balance" => "账户余额不足,请充值后重试。",
+            "rate_limit_exceeded" => "请求速率超限,请稍后重试。",
             "context_length_exceeded" => "输入内容超出模型上下文限制。",
-            "invalid_api_key" => "API Key 无效，请检查配置。",
-            "model_not_found" => "模型不存在，请检查模型名称。",
-            "server_error" => "服务端内部错误，请稍后重试。",
+            "invalid_api_key" => "API Key 无效,请检查配置。",
+            "model_not_found" => "模型不存在,请检查模型名称。",
+            "server_error" => "服务端内部错误,请稍后重试。",
             _ => null,
         };
 
@@ -602,8 +628,21 @@ public sealed class DeepSeekChatClient : IChatClient
             return $"API 错误（HTTP {statusCode}）：{errorMessage}";
         }
 
-        return $"API 请求失败，状态码 {statusCode}。";
+        return $"API 请求失败,状态码 {statusCode}。";
     }
+
+#if NET8_0_OR_GREATER
+    [JsonSourceGenerationOptions(
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+    [JsonSerializable(typeof(DeepSeekChatChunk))]
+    [JsonSerializable(typeof(DeepSeekErrorResponse))]
+    [JsonSerializable(typeof(Dictionary<string, JsonElement>))]
+    [JsonSerializable(typeof(IDictionary<string, object>), GenerationMode = JsonSourceGenerationMode.Serialization)]
+    private partial class SourceGenerationContext : JsonSerializerContext
+    {
+    }
+#endif
 
     private sealed class ToolCallAccumulator
     {
@@ -645,7 +684,11 @@ public sealed class DeepSeekChatClient : IChatClient
         {
             try
             {
+#if NET8_0_OR_GREATER
+                var json = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argumentsJson, SourceGenerationContext.Default.Options);
+#else
                 var json = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(argumentsJson, SerializerOptions);
+#endif
                 if (json is null)
                 {
                     return [];
