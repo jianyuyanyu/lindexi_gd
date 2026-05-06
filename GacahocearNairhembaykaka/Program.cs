@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.IO.Compression;
+
 using OpenMcdf;
 
 namespace GacahocearNairhembaykaka
@@ -8,11 +10,13 @@ namespace GacahocearNairhembaykaka
     {
         static void Main(string[] args)
         {
-            CompoundFile cf = new CompoundFile("oleObject1.bin");
-            var rootStorage = cf.RootStorage;
-            var cfStream = rootStorage.GetStream("Package");
-            var data = cfStream.GetData();
-
+            var rootStorage = OpenMcdf.RootStorage.OpenRead("oleObject1.bin");
+            using CfbStream cfStream = rootStorage.OpenStream("Package");
+            using var zipArchive = new ZipArchive(cfStream, ZipArchiveMode.Read);
+            foreach (var zipArchiveEntry in zipArchive.Entries)
+            {
+                GC.KeepAlive(zipArchiveEntry);
+            }
         }
     }
 }
