@@ -6,7 +6,7 @@ using System.Text.Json;
 
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
-
+using Microsoft.Extensions.AI.DeepSeek;
 using OpenAI;
 
 var keyFile = @"C:\lindexi\Work\Doubao.txt";
@@ -18,7 +18,12 @@ var openAiClient = new OpenAIClient(new ApiKeyCredential(key), new OpenAIClientO
     NetworkTimeout = TimeSpan.FromHours(1),
 });
 
-var chatClient = openAiClient.GetChatClient("ep-20260306101224-c8mtg");
+var chatClient = openAiClient.GetChatClient("ep-20260306101224-c8mtg").AsIChatClient();
+
+var deepSeekKeyFile = @"C:\lindexi\Work\deepseek.txt";
+var deepSeekKey = File.ReadAllText(deepSeekKeyFile);
+var deepSeekChatClient = new DeepSeekChatClient(deepSeekKey, "deepseek-v4-pro");
+
 var coursewareJsonFile = @"C:\lindexi\Work\CoursewareMaterialInfo.json";
 
 var coursewareMaterialInfo = JsonSerializer.Deserialize<SavableCoursewareMaterialInfo>(File.ReadAllText(coursewareJsonFile), new JsonSerializerOptions()
@@ -35,7 +40,7 @@ var subAgentPrompt = string.Empty;
 var scriptResults = new List<(int SlideIndex, string ScriptText, string RawResponse)>();
 var allCoursewareText = BuildAllCoursewareText(coursewareMaterialInfo);
 
-ChatClientAgent mainAgent = chatClient.AsIChatClient()
+ChatClientAgent mainAgent = deepSeekChatClient
     .AsBuilder()
     .BuildAIAgent(new ChatClientAgentOptions()
     {
@@ -43,12 +48,12 @@ ChatClientAgent mainAgent = chatClient.AsIChatClient()
         {
             Tools =
             [
-                AIFunctionFactory.Create(SaveSubAgentPrompt, "保存课件讲述脚本子代理提示词", description: "保存可直接作为 System Prompt 使用的课件页面讲述脚本生成子代理提示词"),
+                AIFunctionFactory.Create(SaveSubAgentPrompt, "SaveSubAgentPrompt", description: "保存课件讲述脚本子代理提示词。保存可直接作为 System Prompt 使用的课件页面讲述脚本生成子代理提示词"),
             ]
         }
     });
 
-ChatClientAgent neutralEvaluatorAgent = chatClient.AsIChatClient()
+ChatClientAgent neutralEvaluatorAgent = deepSeekChatClient
     .AsBuilder()
     .BuildAIAgent();
 
@@ -81,8 +86,17 @@ var prompt = subAgentPrompt.Replace("$(AllCoursewareText)", allCoursewareText)
 - 必须忠实于当前页截图和文本提取信息，不要臆测截图与文本中不存在的内容。
 - 需要结合整份课件文本和此前页面脚本，让当前页讲述自然承接上下文。
 - 脚本中必须嵌入操作符，操作符必须使用 `[]` 包起来，并采用 `Key: Value` 格式。
-- 操作符示例：`[语气: 平缓]`、`[语气: 强调]`、`[停顿: 2秒]`。
-- 每一段讲述应根据内容自然加入语气和停顿操作符，避免整篇缺少节奏控制。
+- 操作符示例：`[上下文: 你可以说慢一点吗？]`、`[停顿: 2秒]`。
+   - 其中上下文为语音合成的辅助信息，用于模型对话式合成，能更好的体现语音情感。上下文可选内容比较多，比如：
+     1. 语速调整：如 "你可以说慢一点吗？"
+     2. 情绪/语气调整：如 "你可以用特别特别痛心的语气说话吗?" 、"嗯，你的语气再欢乐一点"
+     3. 音量调整：如 "你可以小声一点吗？"、"你嗓门再小点。"
+     4. 音感调整：如 "你用骄傲的语气来说话"
+     5. 关联上下文： 如整个LLM中，几轮的对话是 Q: 我今天分手了。A: 啊，那你不要太难过哦。Q:我才不难过呢，那个人太渣了。A: 哈哈，那就好，那你吃点好吃的好好庆祝一下。可以将["我才不难过呢，那个人太渣了。"] 作为 上下文 送给服务进行合成，从而使得回复语音有更好的对话效果
+   - 当前操作符只有：
+     - 上下文
+     - 停顿 
+- 每一段讲述应根据内容自然加入停顿操作符，避免整篇缺少节奏控制。
 - 输出必须是可直接用于语音生成的脚本文本，不要输出 Markdown 解释。
 - 必须要求子代理调用工具提交最终脚本。
 
@@ -150,11 +164,17 @@ for (var rounds = 0; ; rounds++)
 1. 是否忠实于课件页面信息，是否存在臆测和编造。
 2. 是否适合生成讲述音频。
 3. 是否自然承接整份课件上下文。
-4. 是否合理使用 `[Key: Value]` 格式操作符，例如 `[语气: 平缓]` 和 `[停顿: 2秒]`。
-5. 是否存在操作符格式错误、节奏过密或过少的问题。
+4. 是否合理使用 `[Key: Value]` 格式操作符，例如 `[上下文: 你可以说慢一点吗？]` 和 `[停顿: 2秒]`。
+  - 当前操作符只有：
+    - 上下文
+    - 停顿
+5. 是否存在操作符格式错误、节奏过密或过少的问题。模型不能自己创建其他操作符，仅能使用现有的类型
 
 所有页面讲述脚本：
 {previousScriptsBuilder}
+
+当前的 SubAgent 提示词（供参考，不需要评价提示词本身）：
+{currentSubAgentPrompt}
 """);
 
     var neutralEvalSession = await neutralEvaluatorAgent.CreateSessionAsync();
@@ -180,7 +200,7 @@ for (var rounds = 0; ; rounds++)
 固定任务不要变化：
 - 输入仍然是整份课件文本、当前页序号、当前页文本、此前页面脚本和当前页截图。
 - 输出仍然是当前页可直接用于语音生成的中文讲述脚本。
-- 脚本必须嵌入 `[]` 包起来的 `Key: Value` 格式操作符，例如 `[语气: 平缓]`、`[停顿: 2秒]`。
+- 脚本必须嵌入 `[]` 包起来的 `Key: Value` 格式操作符，例如 `[上下文: 你可以说慢一点吗？]`、`[停顿: 2秒]`。
 
 本次所有页面脚本：
 {previousScriptsBuilder}
@@ -248,9 +268,9 @@ async Task<(string ScriptText, string RawResponse)> GenerateSlideScriptAsync(
     string screenshotPath)
 {
     var scriptText = string.Empty;
-    var tool = AIFunctionFactory.Create(SubmitSlideScript, "提交当前页面讲述脚本", description: "提交当前课件页面最终讲述脚本，脚本需包含语气和停顿等操作符");
+    var tool = AIFunctionFactory.Create(SubmitSlideScript, nameof(SubmitSlideScript), description: "提交当前课件页面最终讲述脚本，脚本需包含语气和停顿等操作符");
 
-    ChatClientAgent subAgent = chatClient.AsIChatClient()
+    ChatClientAgent subAgent = chatClient
         .AsBuilder()
         .UseFunctionInvocation(configure: client =>
         {
@@ -296,7 +316,7 @@ async Task<(string ScriptText, string RawResponse)> GenerateSlideScriptAsync(
     return (scriptText, runResult.ContentText);
 
     [Description("提交当前课件页面讲述脚本")]
-    void SubmitSlideScript([Description("当前页面可直接用于语音生成的中文讲述脚本，必须包含 [Key: Value] 格式操作符，例如 [语气: 平缓]、[停顿: 2秒]")] string script)
+    void SubmitSlideScript([Description("当前页面可直接用于语音生成的中文讲述脚本，必须包含 [Key: Value] 格式操作符，例如 `[上下文: 你可以说慢一点吗？]`、`[停顿: 2秒]`")] string script)
     {
         scriptText = script;
 

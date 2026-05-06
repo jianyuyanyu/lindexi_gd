@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="../../../SemanticKernelLib/SemanticKernelSamples/Microsoft.Agents.AI.Extensions/src/Microsoft.Extensions.AI.DeepSeek/Microsoft.Extensions.AI.DeepSeek.csproj" />
   <Project Path="../../../SemanticKernelLib/SemanticKernelSamples/VideoComposer/VideoComposerLib/VideoComposerLib.csproj" />
   <Project Path="../../../SemanticKernelLib/SemanticKernelSamples/VolcEngineSdk/VolcEngineSdk/VolcEngineSdk.csproj" />
   <Project Path="KadefihalldokaiChairwedone/KadefihalldokaiChairwedone.csproj" />
