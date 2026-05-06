@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using VolcEngineSdk.OpenSpeech.Contexts;
 
 namespace VolcEngineSdk.OpenSpeech;
@@ -12,7 +13,6 @@ namespace VolcEngineSdk.OpenSpeech;
 public sealed class OpenSpeechClient
 {
     private const string DefaultBaseUrl = "https://openspeech.bytedance.com/api/v3/tts";
-    private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
 
     private readonly HttpClient _httpClient;
 
@@ -49,7 +49,7 @@ public sealed class OpenSpeechClient
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, BuildRequestUri(options.Protocol));
         options.Apply(httpRequest.Headers);
-        httpRequest.Content = JsonContent.Create(request, options: SerializerOptions);
+        httpRequest.Content = JsonContent.Create(request, OpenSpeechJsonSerializerContext.Default.SpeechSynthesisRequest);
 
         using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
@@ -104,7 +104,7 @@ public sealed class OpenSpeechClient
         {
             using (jsonDocument)
             {
-                var payload = jsonDocument.Deserialize<SpeechSynthesisResponse>(SerializerOptions);
+                var payload = jsonDocument.RootElement.Deserialize(OpenSpeechJsonSerializerContext.Default.SpeechSynthesisResponse);
                 state.Append(payload);
             }
         }
@@ -150,19 +150,9 @@ public sealed class OpenSpeechClient
             return;
         }
 
-        var payload = JsonSerializer.Deserialize<SpeechSynthesisResponse>(dataBuilder.ToString(), SerializerOptions);
+        var payload = JsonSerializer.Deserialize(dataBuilder.ToString(), OpenSpeechJsonSerializerContext.Default.SpeechSynthesisResponse);
         state.Append(payload);
         dataBuilder.Clear();
-    }
-
-    private static JsonSerializerOptions CreateSerializerOptions()
-    {
-        var serializerOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
-        {
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-        serializerOptions.Converters.Add(new SpeechSynthesisAdditionsJsonConverter());
-        return serializerOptions;
     }
 
     private sealed class SpeechSynthesisAccumulator(string? logId)
