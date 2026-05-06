@@ -6,6 +6,9 @@ using VolcEngineSdk.OpenSpeech.Contexts;
 
 namespace VolcEngineSdk.OpenSpeech;
 
+/// <summary>
+/// 火山引擎 OpenSpeech 语音合成客户端。
+/// </summary>
 public sealed class OpenSpeechClient
 {
     private const string DefaultBaseUrl = "https://openspeech.bytedance.com/api/v3/tts";
@@ -13,6 +16,11 @@ public sealed class OpenSpeechClient
 
     private readonly HttpClient _httpClient;
 
+    /// <summary>
+    /// 初始化一个 <see cref="OpenSpeechClient"/> 实例。
+    /// </summary>
+    /// <param name="httpClient">用于发送请求的 <see cref="HttpClient"/>；为空时自动创建。</param>
+    /// <param name="baseUrl">OpenSpeech 语音合成服务基础地址。</param>
     public OpenSpeechClient(HttpClient? httpClient = null, string baseUrl = DefaultBaseUrl)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
@@ -20,11 +28,18 @@ public sealed class OpenSpeechClient
         BaseUrl = baseUrl.TrimEnd('/');
     }
 
+    /// <summary>
+    /// 语音合成服务基础地址。
+    /// </summary>
     public string BaseUrl { get; }
 
     /// <summary>
     /// 调用火山引擎 OpenSpeech 语音合成接口并返回完整音频数据。
     /// </summary>
+    /// <param name="request">语音合成请求体，包含用户信息与请求参数。</param>
+    /// <param name="options">请求选项，包含鉴权信息、协议类型和附加请求头。</param>
+    /// <param name="cancellationToken">用于取消异步操作的令牌。</param>
+    /// <returns>合成后的音频、分句结果、用量信息以及服务端日志 ID。</returns>
     public async Task<SpeechSynthesisResult> SynthesizeAsync(SpeechSynthesisRequest request, SpeechSynthesisRequestOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
