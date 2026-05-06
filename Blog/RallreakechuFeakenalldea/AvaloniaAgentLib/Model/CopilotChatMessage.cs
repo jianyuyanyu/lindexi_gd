@@ -187,7 +187,7 @@ public sealed class CopilotChatMessage : NotifyBase
                 return string.Empty;
             }
 
-            return $"本次用量 {string.Join(UsageSummarySeparator, parts)}";
+            return $"用量{string.Join(UsageSummarySeparator, parts)}";
         }
     }
 
@@ -250,20 +250,26 @@ public sealed class CopilotChatMessage : NotifyBase
 
     private void AppendUsageDetails(UsageContent usageContent)
     {
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (Role != ChatRole.Assistant || usageContent.Details is null)
         {
             return;
         }
 
+        AppendUsageDetails(usageContent.Details);
+    }
+
+    public void AppendUsageDetails(UsageDetails details)
+    {
         if (UsageDetails is null)
         {
             var usageDetails = new UsageDetails();
-            usageDetails.Add(usageContent.Details);
+            usageDetails.Add(details);
             UsageDetails = usageDetails;
             return;
         }
 
-        UsageDetails.Add(usageContent.Details);
+        UsageDetails.Add(details);
         OnUsageDetailsChanged();
     }
 

@@ -4,16 +4,17 @@
 
 `CopilotViewModel` 的聊天日志现在走可替换的 `ICopilotChatLogger`，默认实现是 `FileCopilotChatLogger`。
 
-默认约定有 4 个：
+默认约定有 5 个：
 
 1. 日志能力由 `CopilotViewModel.ChatLogger` 提供，外部可以在初始化阶段替换实现。
-2. `FileCopilotChatLogger` 允许在构造时指定日志文件夹。
-3. 每个会话按 `CurrentSessionId` 单独落一个文件，文件里顺序追加“时间 + 说话人 + 内容”；如果助手消息同时带有思考链和正文，则按统一组合文本一起写入；若带有 `UsageDetails`，则继续追加用量摘要。
-4. 编辑器右键发送、翻译、本地转换结果展示等派生操作会先新建会话，再把文本按正常用户/助手消息写入该会话历史。
+2. `FileCopilotChatLogger` 允许在构造时分别指定文本日志文件夹与聊天历史文件夹。
+3. 每个会话按 `CurrentSessionId` 单独落一个可读文本日志文件，文件里顺序追加“时间 + 说话人 + 内容”；如果助手消息同时带有思考链和正文，则按统一组合文本一起写入；若带有 `UsageDetails`，则继续追加用量摘要。
+4. 同一个会话还会在 `CopilotChatHistory` 文件夹里维护一份 XML 文件，文件名为 `yyyyMMdd_HHmmss_{SessionId:N}.xml`，内容按会话聚合全部消息，方便后续反序列化查阅历史。
+5. 编辑器右键发送、翻译、本地转换结果展示等派生操作会先新建会话，再把文本按正常用户/助手消息写入该会话历史。
 
 ## 当前接线位置
 
-在 `SimpleWrite` 里，右侧栏初始化时会把应用数据目录下的 `CopilotChatLogs` 注入给 `CopilotViewModel`：
+在 `SimpleWrite` 里，右侧栏初始化时会把应用数据目录下的 `CopilotChatLogs` 与 `CopilotChatHistory` 一起注入给 `CopilotViewModel`：
 
 - `SimpleWrite/Foundation/AppPath.cs`
 - `SimpleWrite/Views/Components/RightSlideBar.axaml.cs`
@@ -22,10 +23,12 @@
 
 ## 文件组织方式
 
-默认文件实现使用：
+默认文件实现使用两套文件：
 
-- 文件夹：`AppPathManager.CopilotChatLogDirectory`
-- 文件名：`{CurrentSessionId:N}.log`
+- 文本日志文件夹：`AppPathManager.CopilotChatLogDirectory`
+- 文本日志文件名：`{创建首条消息时间:yyyyMMdd_HHmmss}_{CurrentSessionId:N}.log`
+- 聊天历史文件夹：`AppPathManager.CopilotChatHistoryDirectory`
+- 聊天历史文件名：`{创建首条消息时间:yyyyMMdd_HHmmss}_{CurrentSessionId:N}.xml`
 
 单个文件内容是可读文本，按时间顺序追加，例如：
 
@@ -35,7 +38,7 @@
 - 实际消息正文；若存在思考链，则会先写“思考”部分，再写分隔线和正文
 - 若存在用量统计，则继续写入当前可用的总计、输入、输出、音频、思考、缓存等项目
 
-这样排查单次会话时，不需要反序列化额外结构，直接打开文本文件即可看见来回消息。
+这样排查单次会话时，可以直接打开文本文件查看原始往返消息；如果需要按结构恢复整段会话，则读取 XML 文件即可。
 
 ## 记录时机
 
@@ -60,10 +63,12 @@
 
 1. 不要让 `AvaloniaAgentLib` 直接依赖 `SimpleWrite` 的路径类型。
 2. 不要在流式输出每个分片都落盘，否则很容易把单次回复拆成大量碎片日志。
-3. 调整 AI 用量统计前，先核对 `Microsoft.Agents.AI.OpenAI` 及其传递依赖 `Microsoft.Extensions.AI*` 的实际解析版本，再决定使用哪些 `UsageDetails` 字段。
+3. 如果要调整 XML 结构，优先保持元素名和属性名稳定，避免后续反序列化历史时需要兼容太多版本。
+4. 调整 AI 用量统计前，先核对 `Microsoft.Agents.AI.OpenAI` 及其传递依赖 `Microsoft.Extensions.AI*` 的实际解析版本，再决定使用哪些 `UsageDetails` 字段。
 
 ## 适用场景
 
 - 需要替换聊天日志存储方式时。
 - 需要排查某个 `CurrentSessionId` 对应的完整会话时。
 - 需要把日志目录改到应用专属数据路径时。
+- 需要增加可反序列化的 Copilot 聊天历史存档时。

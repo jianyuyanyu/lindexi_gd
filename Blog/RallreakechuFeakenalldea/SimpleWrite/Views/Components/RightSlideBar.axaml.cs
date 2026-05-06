@@ -72,7 +72,9 @@ public partial class RightSlideBar : UserControl
             var agentApiConfiguration = appConfigurator.Of<AgentApiConfiguration>();
 
             CopilotViewModel copilotViewModel = CopilotSlideBar.ViewModel;
-            copilotViewModel.ChatLogger = new FileCopilotChatLogger(mainViewModel.AppPathManager.CopilotChatLogDirectory);
+            copilotViewModel.ChatLogger = new FileCopilotChatLogger(
+                mainViewModel.AppPathManager.CopilotChatLogDirectory,
+                mainViewModel.AppPathManager.CopilotChatHistoryDirectory);
             copilotViewModel.AgentApiEndpointManager.ApiEndpointProvider = new AgentApiConfigurationApiEndpointProvider(appConfigurator);
             BindWorkspacePath(mainViewModel.FolderExplorerViewModel, copilotViewModel);
 
