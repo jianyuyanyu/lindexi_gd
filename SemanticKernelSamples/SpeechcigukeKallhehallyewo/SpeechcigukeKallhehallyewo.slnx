@@ -1,5 +1,6 @@
 <Solution>
+  <Project Path="../../../SemanticKernelLib/SemanticKernelSamples/VideoComposer/VideoComposerLib/VideoComposerLib.csproj" />
+  <Project Path="../../../SemanticKernelLib/SemanticKernelSamples/VolcEngineSdk/VolcEngineSdk/VolcEngineSdk.csproj" />
+  <Project Path="KadefihalldokaiChairwedone/KadefihalldokaiChairwedone.csproj" />
   <Project Path="SpeechcigukeKallhehallyewo/SpeechcigukeKallhehallyewo.csproj" />
-  <Project Path="VideoComposerApp/VideoComposerApp.csproj" />
-  <Project Path="VideoComposerLib/VideoComposerLib.csproj" />
 </Solution>
