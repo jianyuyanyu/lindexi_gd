@@ -41,6 +41,7 @@ public sealed class SpeechSynthesisRequestParameters
     /// 追加的高级参数。
     /// </summary>
     [JsonPropertyName("additions")]
+    [JsonConverter(typeof(SpeechSynthesisAdditionsJsonConverter))]
     public SpeechSynthesisAdditions? Additions { get; set; }
 
     /// <summary>

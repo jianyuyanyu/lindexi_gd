@@ -21,30 +21,15 @@ internal sealed class SpeechSynthesisAdditionsJsonConverter : JsonConverter<Spee
                 return null;
             }
 
-            return JsonSerializer.Deserialize<SpeechSynthesisAdditions>(json, options);
+            return JsonSerializer.Deserialize(json, OpenSpeechJsonSerializerContext.Default.SpeechSynthesisAdditions);
         }
 
-        using var jsonDocument = JsonDocument.ParseValue(ref reader);
-        return jsonDocument.Deserialize<SpeechSynthesisAdditions>(options);
+        return JsonSerializer.Deserialize(ref reader, OpenSpeechJsonSerializerContext.Default.SpeechSynthesisAdditions);
     }
 
     public override void Write(Utf8JsonWriter writer, SpeechSynthesisAdditions value, JsonSerializerOptions options)
     {
-        var json = JsonSerializer.Serialize(value, CreateInnerOptions(options));
+        var json = JsonSerializer.Serialize(value, OpenSpeechJsonSerializerContext.Default.SpeechSynthesisAdditions);
         writer.WriteStringValue(json);
-    }
-
-    private static JsonSerializerOptions CreateInnerOptions(JsonSerializerOptions options)
-    {
-        var serializerOptions = new JsonSerializerOptions(options);
-        for (var i = serializerOptions.Converters.Count - 1; i >= 0; i--)
-        {
-            if (serializerOptions.Converters[i] is SpeechSynthesisAdditionsJsonConverter)
-            {
-                serializerOptions.Converters.RemoveAt(i);
-            }
-        }
-
-        return serializerOptions;
     }
 }

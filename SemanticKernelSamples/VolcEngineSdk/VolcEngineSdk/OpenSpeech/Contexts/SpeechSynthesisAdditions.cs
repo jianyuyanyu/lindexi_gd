@@ -1,4 +1,4 @@
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace VolcEngineSdk.OpenSpeech.Contexts;
@@ -123,7 +123,7 @@ public sealed class SpeechSynthesisAdditions
     public bool? UseTagParser { get; set; }
 
     [JsonExtensionData]
-    public Dictionary<string, JsonNode?> ExtensionData { get; set; } = [];
+    public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 }
 
 public sealed class SpeechSynthesisAigcMetadata
